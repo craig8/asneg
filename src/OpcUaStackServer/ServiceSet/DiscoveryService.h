@@ -1,5 +1,5 @@
 /*
-   Copyright 2015-2017 Kai Huebl (kai@huebl-sgh.de)
+   Copyright 2015-2018 Kai Huebl (kai@huebl-sgh.de)
 
    Lizenziert gemäß Apache Licence Version 2.0 (die „Lizenz“); Nutzung dieser
    Datei nur in Übereinstimmung mit der Lizenz erlaubt.
@@ -20,11 +20,13 @@
 
 #include "OpcUaStackCore/Base/os.h"
 #include "OpcUaStackCore/Base/ObjectPool.h"
+#include "OpcUaStackCore/Certificate/ApplicationCertificate.h"
 #include "OpcUaStackCore/BuildInTypes/BuildInTypes.h"
 #include "OpcUaStackCore/ServiceSet/EndpointDescription.h"
 #include "OpcUaStackCore/ServiceSet/DiscoveryServiceTransaction.h"
+#include "OpcUaStackCore/SecureChannel/SecureChannelTransaction.h"
 #include "OpcUaStackServer/ServiceSet/ServiceSetBase.h"
-#include "OpcUaStackServer/ServiceSet/DiscoveryManagerIf.h"
+#include "OpcUaStackServer/ServiceSet/DiscoveryIf.h"
 
 using namespace OpcUaStackCore;
 
@@ -41,10 +43,24 @@ namespace OpcUaStackServer
 		DiscoveryService(void);
 		~DiscoveryService(void);
 
-		void discoveryManagerIf(DiscoveryManagerIf* discoveryManagerIf);
-		void endpointDescriptionArray(EndpointDescriptionArray::SPtr endpointDescriptionArray);
+		void discoveryIf(DiscoveryIf* discoveryIf);
+		void endpointDescriptionArray(EndpointDescriptionArray::SPtr& endpointDescriptionArray);
+		void applicationCertificate(ApplicationCertificate::SPtr& applicationCertificate);
 
-		bool message(SecureChannelTransaction::SPtr secureChannelTransaction);
+		void getEndpointRequest(
+			RequestHeader::SPtr requestHeader,
+			SecureChannelTransaction::SPtr secureChannelTransaction
+		);
+		void registerServerRequest(
+			RequestHeader::SPtr requestHeader,
+			SecureChannelTransaction::SPtr secureChannelTransaction
+		);
+		void findServersRequest(
+			RequestHeader::SPtr requestHeader,
+			SecureChannelTransaction::SPtr secureChannelTransaction
+		);
+
+		//bool message(SecureChannelTransactionOld::SPtr secureChannelTransaction);
 
 		//- Component -----------------------------------------------------------------
 		void receive(Message::SPtr message);
@@ -52,12 +68,13 @@ namespace OpcUaStackServer
 
 	  private:
 		EndpointDescriptionArray::SPtr endpointDescriptionArray_;
-		DiscoveryManagerIf* discoveryManagerIf_;
+		ApplicationCertificate::SPtr applicationCertificate_;
+		DiscoveryIf* discoveryIf_;
 
-		bool receiveGetEndpointsRequest(SecureChannelTransaction::SPtr secureChannelTransaction);
-		bool receiveFindServersRequest(SecureChannelTransaction::SPtr secureChannelTransaction);
-		bool receiveRegisterServerRequest(SecureChannelTransaction::SPtr secureChannelTransaction);
-		void receiveRegisterServerRequest(ServiceTransaction::SPtr serviceTransaction);
+		//bool receiveGetEndpointsRequest(SecureChannelTransactionOld::SPtr secureChannelTransaction);
+		//bool receiveFindServersRequest(SecureChannelTransactionOld::SPtr secureChannelTransaction);
+		//bool receiveRegisterServerRequest(SecureChannelTransactionOld::SPtr secureChannelTransaction);
+		//void receiveRegisterServerRequest(ServiceTransaction::SPtr serviceTransaction);
 	};
 
 }

@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 2.8.9)
 project	(ProjectName)
 set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_CXX_STANDARD 11)
+cmake_policy(SET CMP0053 OLD)
+
 
 # ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
@@ -13,7 +16,7 @@ set(VERSION_MAJOR "1" CACHE STRING "major version")
 set(VERSION_MINOR "0" CACHE STRING "minor version")
 set(VERSION_PATCH "0" CACHE STRING "patch version")
 
-set(OPCUASTACK_VERSION_MAJOR "2" CACHE STRING "major version")
+set(OPCUASTACK_VERSION_MAJOR "3" CACHE STRING "major version")
 set(OPCUASTACK_VERSION_MINOR "0" CACHE STRING "minor version")
 set(OPCUASTACK_VERSION_PATCH "1" CACHE STRING "patch version")
 set(OPCUASTACK_INSTALL_PREFIX "/" CACHE PATH "opc ua stack intallation prefix")

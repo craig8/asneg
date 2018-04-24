@@ -1,5 +1,5 @@
 /*
-   Copyright 2015 Kai Huebl (kai@huebl-sgh.de)
+   Copyright 2015-2018 Kai Huebl (kai@huebl-sgh.de)
 
    Lizenziert gemäß Apache Licence Version 2.0 (die „Lizenz“); Nutzung dieser
    Datei nur in Übereinstimmung mit der Lizenz erlaubt.
@@ -19,7 +19,7 @@
 #ifndef __OpcUaStackCore_SecureChannel_h__
 #define __OpcUaStackCore_SecureChannel_h__
 
-#include "OpcUaStackCore/TCPChannel/TCPConnection.h"
+#include <OpcUaStackCore/Network/TCPConnection.h>
 #include "OpcUaStackCore/Utility/IOThread.h"
 #include "OpcUaStackCore/SecureChannel/MessageHeader.h"
 #include "OpcUaStackCore/SecureChannel/SecureChannelTransaction.h"
@@ -51,6 +51,10 @@ namespace OpcUaStackCore
 		SecureChannel(IOThread* ioThread);
 		virtual ~SecureChannel(void);
 
+		void handle(Object::SPtr& handle);
+		void handleReset(void);
+		Object::SPtr handle(void);
+
 		void debugRecvHeader(MessageHeader& messageHeader);
 		void debugRecvHello(HelloMessage& hello);
 		void debugRecvAcknowledge(AcknowledgeMessage& acknowledge);
@@ -73,6 +77,8 @@ namespace OpcUaStackCore
 		IOThread* ioThread_;
 		OpcUaStackCore::SlotTimerElement::SPtr slotTimerElement_;
 
+		char actSegmentFlag_;
+
 		State state_;
 		Object::SPtr config_;
 		bool closeFlag_;
@@ -86,7 +92,7 @@ namespace OpcUaStackCore
 
 		OpcUaUInt32 channelId_;
 		OpcUaUInt32 tokenId_;
-		std::vector<OpcUaUInt32> tokenIdVec_;
+		std::vector<OpcUaUInt32> secureTokenVec_;
 		UtcTime createAt_;
 		OpcUaInt32 revisedLifetime_;
 
@@ -94,8 +100,10 @@ namespace OpcUaStackCore
 		MessageHeader messageHeader_;
 		SecureChannelTransaction::SPtr secureChannelTransaction_;
 		SecureChannelTransaction::List secureChannelTransactionList_;
+		OpenSecureChannelResponse::List openSecureChannelResponseList_;
 		bool sendFirstSegment_;
 		bool recvFirstSegment_;
+		bool asyncRecv_;
 		bool asyncSend_;
 		bool asyncSendStop_;
 		OpcUaUInt32 sendRequestId_;
@@ -112,6 +120,7 @@ namespace OpcUaStackCore
 		SecurityMode securityMode_;
 		SecurityPolicy securityPolicy_;
 
+		Object::SPtr handle_;
 		static OpcUaUInt32 gChannelId_;
 
 	  private:

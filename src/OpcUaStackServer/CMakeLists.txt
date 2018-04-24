@@ -36,6 +36,20 @@ set_target_properties(
     SOVERSION ${VERSION_MAJOR}
 )
 
+if (WIN32)
+    set_target_properties(
+    	OpcUaStackServer 
+    	PROPERTIES OUTPUT_NAME 
+    	"OpcUaStackServer${VERSION_MAJOR}"
+	)
+	set(OPCUASTACK_SERVER_LIB_NAME OpcUaStackServer@VERSION_MAJOR@.lib)
+else()
+    set(OPCUASTACK_SERVER_LIB_NAME libOpcUaStackServer.so.@VERSION_MAJOR@)
+endif()
+
+message(STATUS "OpcUaStackServer")
+message(STATUS "  library name: ${OPCUASTACK_SERVER_LIB_NAME}")
+
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 #
@@ -53,6 +67,10 @@ file(GLOB INC_OpcUaStackServer_ServiceManager OpcUaStackServer/ServiceManager/*.
 file(GLOB INC_OpcUaStackServer_ServiceSet OpcUaStackServer/ServiceSet/*.h)
 file(GLOB INC_OpcUaStackServer_ServiceSetApplication OpcUaStackServer/ServiceSetApplication/*.h)
 file(GLOB INC_OpcUaStackServer_ApplicationUtility OpcUaStackServer/ApplicationUtility/*.h)
+file(GLOB INC_OpcUaStackServer_VariableType OpcUaStackServer/VariableType/*.h)
+file(GLOB INC_OpcUaStackServer_ObjectType OpcUaStackServer/ObjectType/*.h)
+file(GLOB INC_OpcUaStackServer_StandardVariableType OpcUaStackServer/StandardVariableType/*.h)
+file(GLOB INC_OpcUaStackServer_StandardObjectType OpcUaStackServer/StandardObjectType/*.h)
 
 
 install(
@@ -118,5 +136,29 @@ install(
 install(
     FILES ${INC_OpcUaStackServer_ApplicationUtility} 
     DESTINATION /usr/include/OpcUaStack${VERSION_MAJOR}/OpcUaStackServer/ApplicationUtility
+    COMPONENT headers
+)
+
+install(
+    FILES ${INC_OpcUaStackServer_VariableType} 
+    DESTINATION /usr/include/OpcUaStack${VERSION_MAJOR}/OpcUaStackServer/VariableType
+    COMPONENT headers
+)
+
+install(
+    FILES ${INC_OpcUaStackServer_ObjectType} 
+    DESTINATION /usr/include/OpcUaStack${VERSION_MAJOR}/OpcUaStackServer/ObjectType
+    COMPONENT headers
+)
+
+install(
+    FILES ${INC_OpcUaStackServer_StandardVariableType} 
+    DESTINATION /usr/include/OpcUaStack${VERSION_MAJOR}/OpcUaStackServer/StandardVariableType
+    COMPONENT headers
+)
+
+install(
+    FILES ${INC_OpcUaStackServer_StandardObjectType} 
+    DESTINATION /usr/include/OpcUaStack${VERSION_MAJOR}/OpcUaStackServer/StandardObjectType
     COMPONENT headers
 )

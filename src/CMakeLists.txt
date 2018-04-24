@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.9)
-project	(OpcUaStack)
+project	(OpcUaStack4)
 set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_CXX_STANDARD 11)
+cmake_policy(SET CMP0053 OLD)
 
 # ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
@@ -9,7 +11,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 #
 # ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
-set(VERSION_MAJOR "3" CACHE STRING "major version")
+set(VERSION_MAJOR "4" CACHE STRING "major version")
 set(VERSION_MINOR "0" CACHE STRING "minor version")
 set(VERSION_PATCH "1" CACHE STRING "patch version")
 
@@ -80,13 +82,12 @@ endif ()
 #
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
-include(cmake/CMakeLists.txt)
 message(STATUS "Version info")
 message(STATUS "  product version: ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
 message(STATUS "Dependency info")
 message(STATUS "  boost version: ${BOOST_VERSION_MAJOR}.${BOOST_VERSION_MINOR}")
-message(STATUS "  openssl version: ${OPENSSL_VERSION_MAJOR}.${OPENSSL_VERSION_MINOR}.${OPENSSL_VERSION_PATCH}")
+message(STATUS "  openssl version: ${OPENSSL_VERSION_MAJOR}.${OPENSSL_VERSION_MINOR}.${OPENSSL_VERSION_PATCH} (${OPENSSL_VERSION_NUMBER})")
 
 message(STATUS "System info")
 message(STATUS "  host system name: ${CMAKE_HOST_SYSTEM_NAME}")
@@ -119,7 +120,7 @@ add_definitions(-DBOOST_ALL_DYN_LINK)
 find_package(
     Boost 
     "${BOOST_VERSION_MAJOR}.${BOOST_VERSION_MINOR}" 
-    COMPONENTS system unit_test_framework filesystem thread date_time chrono regex 
+    COMPONENTS program_options system unit_test_framework filesystem thread date_time chrono regex 
     REQUIRED
 )
 
@@ -145,6 +146,9 @@ message(STATUS "  chrono debug library: ${Boost_CHRONO_LIBRARY_DEBUG}")
 message(STATUS "  chrono release library: ${Boost_CHRONO_LIBRARY_RELEASE}")
 message(STATUS "  regex debug library: ${Boost_REGEX_LIBRARY_DEBUG}")
 message(STATUS "  regex release library: ${Boost_REGEX_LIBRARY_RELEASE}")
+message(STATUS "  program_options debug library: ${Boost_PROGRAM_OPTIONS_LIBRARY_DEBUG}")
+message(STATUS "  program_options release library: ${Boost_PROGRAM_OPTIONS_LIBRARY_RELEASE}")
+
 message(STATUS "  libraries: ${Boost_LIBRARIES}")
 
 
@@ -166,6 +170,7 @@ find_package(
 
 message(STATUS "OpenSSL library")
 message(STATUS "  found: ${OPENSSL_FOUND}")
+message(STATUS "  version number: ${OPENSSL_VERSION_NUMBER}")
 message(STATUS "  version major: ${OPENSSL_VERSION_MAJOR}")
 message(STATUS "  version minor: ${OPENSSL_VERSION_MINOR}")
 message(STATUS "  version patch: ${OPENSSL_VERSION_PATCH}")
@@ -199,6 +204,20 @@ add_definitions(-std=c++11)
 #add_definitions(-DOPCUA_LWM2M_SERVER_USE_THREAD)
 
 
+# Mosquitto
+#
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+if (DEFINED ENV{USE_MOSQUITTO_CLIENT})
+	message(STATUS "Mosquitto enabled")
+	set(USE_MOSQUITTO_CLIENT $ENV{USE_MOSQUITTO_CLIENT})
+	set(MOSQUITTO_LIBRARIES "mosquitto")
+	add_definitions(-DUSE_MOSQUITTO_CLIENT)
+else()
+        message(STATUS "Mosquitto disabled")
+endif()
+
+
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 #
@@ -210,25 +229,21 @@ if (WIN32)
     include(Tools/CMakeLists.txt) 
 endif()
 include(OpcUaStackCore/CMakeLists.txt)
+include(OpcUaStackPubSub/CMakeLists.txt)
 include(OpcUaStackClient/CMakeLists.txt) 
 include(OpcUaStackServer/CMakeLists.txt)
 include(OpcUaServer/CMakeLists.txt)
 include(OpcUaClient/CMakeLists.txt) 
 include(OpcUaProjectBuilder/CMakeLists.txt)
+include(OpcUaGenerator/CMakeLists.txt)
+include(cmake/CMakeLists.txt)
+
 include(../../niki/logger/CMakeLists.txt)
 include(../../niki/opcua-lwm2m-server/CMakeLists.txt)
 include(../../niki/opcua-sensor-interface/CMakeLists.txt)
 include(../../niki/eddl/CMakeLists.txt)
 include(../../niki/ipso/CMakeLists.txt)
 include(../../niki/asneg-dbserver/CMakeLists.txt)
-
-
-
-
-
-
-
-
 
 
 if (WIN32)

@@ -1,5 +1,5 @@
 /*
-   Copyright 2015-2017 Kai Huebl (kai@huebl-sgh.de)
+   Copyright 2015-2018 Kai Huebl (kai@huebl-sgh.de)
 
    Lizenziert gemäß Apache Licence Version 2.0 (die „Lizenz“); Nutzung dieser
    Datei nur in Übereinstimmung mit der Lizenz erlaubt.
@@ -18,11 +18,12 @@
 #ifndef __OpcUaStackServer_Server_h__
 #define __OpcUaStackServer_Server_h__
 
+#include <OpcUaStackCore/Certificate/ApplicationCertificate.h>
 #include "OpcUaStackCore/Base/os.h"
-#include "OpcUaStackCore/Base/IOService.h"
+#include "OpcUaStackCore/Utility/IOThread.h"
 #include "OpcUaStackCore/Core/Core.h"
 #include "OpcUaStackServer/InformationModel/InformationModel.h"
-#include "OpcUaStackServer/ServiceSet/SessionManagerOld.h"
+#include "OpcUaStackServer/ServiceSet/SessionManager.h"
 #include "OpcUaStackServer/ServiceManager/ServiceManager.h"
 #include "OpcUaStackServer/Application/ApplicationManager.h"
 #include "OpcUaStackServer/Server/ServerStatusDataType.h"
@@ -43,7 +44,7 @@ namespace OpcUaStackServer
 		void stop(void);
 
 		InformationModel::SPtr getInformationModel(void);
-		IOService* ioService(void);
+		IOThread* ioThread(void);
 		ApplicationManager& applicationManager(void);
 		ServiceManager& serviceManager(void);
 
@@ -57,9 +58,11 @@ namespace OpcUaStackServer
 		bool initSession(void);
 		bool shutdownSession(void);
 
-		IOService ioService_;
+		ApplicationCertificate::SPtr applicationCertificate_;
+
+		IOThread::SPtr ioThread_;
 		InformationModel::SPtr informationModel_;
-		SessionManagerOld sessionManager_;
+		SessionManager sessionManager_;
 		ServiceManager serviceManager_;
 		ApplicationManager applicationManager_;
 

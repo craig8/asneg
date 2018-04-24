@@ -1,5 +1,5 @@
 /*
-   Copyright 2015 Kai Huebl (kai@huebl-sgh.de)
+   Copyright 2015-2018 Kai Huebl (kai@huebl-sgh.de)
 
    Lizenziert gemäß Apache Licence Version 2.0 (die „Lizenz“); Nutzung dieser
    Datei nur in Übereinstimmung mit der Lizenz erlaubt.
@@ -47,33 +47,50 @@ namespace OpcUaStackCore
 		return secureChannelServerIf_;
 	}
 
-	void
+	bool
 	SecureChannelServer::accept(SecureChannelServerConfig::SPtr secureChannelServerConfig)
 	{
+		// check interface
 		if (secureChannelServerIf_ == nullptr) {
-			Log(Error, "secure channel server interface invalid")
+			Log(Error, "secure channel server interface invalid; please register interface")
 				.parameter("EndpointUrl", secureChannelServerConfig->endpointUrl());
-			return;
+			return false;
 		}
 
 		// create new secure channel
 		SecureChannel* secureChannel = new SecureChannel(ioThread_);
 		secureChannel->config_ = secureChannelServerConfig;
 		accept(secureChannel);
-		return;
+		return true;
 	}
 
 	void
 	SecureChannelServer::disconnect(void)
 	{
-		if (tcpAcceptor_ != nullptr) tcpAcceptor_->cancel();
+		if (tcpAcceptor_ != nullptr) {
+			// close acceptor socket. The acceptComplete function will be called
+			// with an error
+			tcpAcceptor_->cancel();
+		}
+		else {
+			secureChannelServerIf_->handleEndpointClose();
+		}
 	}
 
 	void
 	SecureChannelServer::disconnect(SecureChannel* secureChannel)
 	{
+		// close secure channel socket. The handleDisconnect function will be
+		// clalled with an error
 		secureChannel->socket().cancel();
 		secureChannel->state_ = SecureChannel::S_CloseSecureChannel;
+	}
+
+	void
+	SecureChannelServer::sendResponse(SecureChannel* secureChannel, SecureChannelTransaction::SPtr& secureChannelTransaction)
+	{
+		// send open secure channel response
+		asyncWriteMessageResponse(secureChannel, secureChannelTransaction);
 	}
 
 	void
@@ -92,7 +109,7 @@ namespace OpcUaStackCore
 		secureChannel->debug_ = config->debug();
 		secureChannel->debugHeader_ = config->debugHeader();
 
-		// get ip address from hostname
+		// get ip address from endpoint hostname
 		Url url(config->endpointUrl());
 		secureChannel->partner_.port(url.port());
 		boost::asio::ip::tcp::resolver::query query(url.host(), url.portToString());
@@ -119,9 +136,17 @@ namespace OpcUaStackCore
 			Log(Error, "address resolver error")
 				.parameter("EndpointUrl", secureChannel->endpointUrl_)
 				.parameter("Message", error.message());
-			secureChannelServerIf_->handleDisconnect(secureChannel);
 
-			// FIXME: error
+			// we do not need the secure channel anymore.
+			delete secureChannel;
+
+			// handle acceptor socket error
+			if (tcpAcceptor_ != nullptr) {
+				tcpAcceptor_->close();
+				delete tcpAcceptor_;
+				tcpAcceptor_ = nullptr;
+			}
+			secureChannelServerIf_->handleEndpointClose();
 
 			return;
 		}
@@ -163,6 +188,15 @@ namespace OpcUaStackCore
 				.parameter("Port", secureChannel->partner_.port())
 				.parameter("Message", error.message());
 
+			// we do not need the secure channel anymore.
+			delete secureChannel;
+
+			// handle acceptor socket error
+			if (tcpAcceptor_ != nullptr) {
+				tcpAcceptor_->close();
+				delete tcpAcceptor_;
+				tcpAcceptor_ = nullptr;
+			}
 			secureChannelServerIf_->handleEndpointClose();
 
 			return;
@@ -203,7 +237,9 @@ namespace OpcUaStackCore
 		// check protocol version
 		if (hello.protocolVersion() != 0) {
 			Log(Error, "receive invalid protocol version in hello request");
-			// FIXME:
+			secureChannel->socket().cancel();
+			secureChannel->state_ = SecureChannel::S_CloseSecureChannel;
+			return;
 		}
 		acknowledge.protocolVersion(0);
 
@@ -252,6 +288,9 @@ namespace OpcUaStackCore
 		// check parameter
 		bool success = true;
 		if (openSecureChannelRequest.requestType() == RT_ISSUE) {
+
+			// create a new security token for a new security channel
+
 			if (secureChannel->channelId_ != 0) {
 				success = false;
 				Log(Error, "receive invalid request type in OpenSecureChannelRequest")
@@ -264,7 +303,10 @@ namespace OpcUaStackCore
 			secureChannel->gChannelId_++;
 			secureChannel->channelId_ = secureChannel->gChannelId_;
 		}
-		else {
+		else if (openSecureChannelRequest.requestType() ==  RT_RENEW) {
+
+			// create a new security token for an existing security channel
+
 			if (secureChannel->channelId_ != channelId) {
 				success = false;
 				Log(Error, "receive invalid channel id in OpenSecureChannelRequest")
@@ -275,28 +317,42 @@ namespace OpcUaStackCore
 					.parameter("ChannelId", channelId);
 			}
 		}
+		else {
+			success = false;
+			Log(Error, "receive invalid OpenSecureChannelRequest")
+				.parameter("Local-Address", secureChannel->local_.address().to_string())
+				.parameter("Local-Port", secureChannel->local_.port())
+				.parameter("Partner-Address", secureChannel->partner_.address().to_string())
+				.parameter("Partner-Port", secureChannel->partner_.port())
+				.parameter("ChannelId", channelId);
+		}
 		if (!success) {
-			// FIXME: error
+			secureChannel->socket().cancel();
+			secureChannel->state_ = SecureChannel::S_CloseSecureChannel;
+			return;
 		}
 
 		// create new security token
-		secureChannel->tokenIdVec_.push_back(std::rand());
+		secureChannel->secureTokenVec_.push_back(std::rand());
 
 		// create open secure channel response
-		OpenSecureChannelResponse openSecureChannelResponse;
+		OpenSecureChannelResponse::SPtr openSecureChannelResponse = constructSPtr<OpenSecureChannelResponse>();
 		OpcUaByte serverNonce[1];
 		serverNonce[0] = 0x01;
-		openSecureChannelResponse.securityToken()->channelId(secureChannel->channelId_);
-		openSecureChannelResponse.securityToken()->tokenId(secureChannel->tokenIdVec_[secureChannel->tokenIdVec_.size()-1]);
-		openSecureChannelResponse.securityToken()->createAt().dateTime(boost::posix_time::microsec_clock::local_time());
-		openSecureChannelResponse.securityToken()->revisedLifetime(openSecureChannelRequest.requestedLifetime());
-		openSecureChannelResponse.responseHeader()->time().dateTime(boost::posix_time::microsec_clock::local_time());
-		openSecureChannelResponse.serverNonce(serverNonce, 1);
+		openSecureChannelResponse->securityToken()->channelId(secureChannel->channelId_);
+		openSecureChannelResponse->securityToken()->tokenId(secureChannel->secureTokenVec_[secureChannel->secureTokenVec_.size()-1]);
+		openSecureChannelResponse->securityToken()->createAt().dateTime(boost::posix_time::microsec_clock::local_time());
+		openSecureChannelResponse->securityToken()->revisedLifetime(openSecureChannelRequest.requestedLifetime());
+		openSecureChannelResponse->responseHeader()->requestHandle(openSecureChannelRequest.requestHeader()->requestHandle());
+		openSecureChannelResponse->responseHeader()->time().dateTime(boost::posix_time::microsec_clock::local_time());
+		openSecureChannelResponse->serverNonce(serverNonce, 1);
 
 		// send open secure channel response
 		asyncWriteOpenSecureChannelResponse(secureChannel, openSecureChannelResponse);
 
-		secureChannelServerIf_->handleConnect(secureChannel);
+		if (openSecureChannelRequest.requestType() ==  RT_ISSUE) {
+			secureChannelServerIf_->handleConnect(secureChannel);
+		}
 	}
 
 	void

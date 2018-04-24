@@ -18,6 +18,10 @@
 #ifndef __OpcUaStackServer_SessionIf_h__
 #define __OpcUaStackServer_SessionIf_h__
 
+#include "OpcUaStackCore/SecureChannel/ResponseHeader.h"
+#include "OpcUaStackCore/SecureChannel/SecureChannelTransaction.h"
+
+using namespace OpcUaStackCore;
 
 namespace OpcUaStackServer
 {
@@ -25,6 +29,18 @@ namespace OpcUaStackServer
 	class SessionIf
 	{
 	  public:
+
+		SessionIf(void) {}
+		virtual ~SessionIf(void) {}
+
+		virtual void responseMessage(
+			ResponseHeader::SPtr& responseHeader,
+			SecureChannelTransaction::SPtr& secureChannelTransaction
+		) = 0;
+		virtual void deleteSession(
+			uint32_t authenticationToken
+		) = 0;
+
 	};
 
 }

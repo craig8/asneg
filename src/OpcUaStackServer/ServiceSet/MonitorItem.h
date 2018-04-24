@@ -52,6 +52,7 @@ namespace OpcUaStackServer
 		uint32_t monitorItemId(void);
 		uint32_t samplingInterval(void);
 		uint32_t queSize(void);
+		bool discardOldest(void);
 		uint32_t size(void);
 		BaseNodeClass::SPtr baseNodeClass(void);
 
@@ -64,13 +65,10 @@ namespace OpcUaStackServer
 		void monitorItemListPushBack(MonitoredItemNotification::SPtr monitoredItemNotification);
 		bool dataChange(MonitoredItemNotification::SPtr monitoredItemNotiication, Attribute* attribute);
 
-		static uint32_t uniqueMonitorItemId(void);
-		static boost::mutex mutex_;
-		static uint32_t uniqueMonitorItemId_;
-
 		uint32_t monitorItemId_;
 		uint32_t samplingInterval_;
 		uint32_t queSize_;
+		bool discardOldest_;
 		uint32_t clientHandle_;
 
 		MonitoredItemCreateRequest::SPtr monitoredItemCreateRequest_;

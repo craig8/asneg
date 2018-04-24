@@ -17,24 +17,18 @@
 
 #include "OpcUaStackCore/Base/Log.h"
 #include "OpcUaStackServer/ServiceSet/MonitorItem.h"
+#include "OpcUaStackServer/ServiceSet/MonitorItemId.h"
 #include "OpcUaStackServer/AddressSpaceModel/AttributeAccess.h"
 
 namespace OpcUaStackServer
 {
 
-	boost::mutex MonitorItem::mutex_;
-	uint32_t MonitorItem::uniqueMonitorItemId_ = 0;
-
-	uint32_t 
-	MonitorItem::uniqueMonitorItemId(void)
-	{
-		boost::mutex::scoped_lock g(mutex_);
-		uniqueMonitorItemId_++;
-		return uniqueMonitorItemId_;
-	}
-
 	MonitorItem::MonitorItem(void)
-	: monitorItemId_(uniqueMonitorItemId())
+	: monitorItemId_(MonitorItemId::monitorItemId())
+	, samplingInterval_(100)
+	, queSize_(0)
+	, discardOldest_(false)
+	, clientHandle_(0)
 	, monitorItemList_()
 	, baseNodeClass_()
 	, attribute_(nullptr)
@@ -66,6 +60,12 @@ namespace OpcUaStackServer
 		return queSize_;
 	}
 
+	bool
+	MonitorItem::discardOldest()
+	{
+	    return discardOldest_;
+	}
+
 	SlotTimerElement::SPtr 
 	MonitorItem::slotTimerElement(void)
 	{
@@ -89,11 +89,19 @@ namespace OpcUaStackServer
 	{
 		baseNodeClass_ = baseNodeClass;
 		monitoredItemCreateRequest_ = monitoredItemCreateRequest;
-		samplingInterval_ = (uint32_t)monitoredItemCreateRequest->requestedParameters().samplingInterval();
 		queSize_ = monitoredItemCreateRequest->requestedParameters().queueSize();
+		discardOldest_ = monitoredItemCreateRequest->requestedParameters().discardOldest();
 		clientHandle_ = monitoredItemCreateRequest->requestedParameters().clientHandle();
 
+		// check sampling
+		samplingInterval_ = (uint32_t)monitoredItemCreateRequest->requestedParameters().samplingInterval();
+		OpcUaDouble nodeSamplingInterval;
+		if (baseNodeClass->getMinimumSamplingInterval(nodeSamplingInterval) && samplingInterval_ < nodeSamplingInterval) {
+		    samplingInterval_ = nodeSamplingInterval;
+		}
+
 		// check attribute
+		boost::shared_lock<boost::shared_mutex> lock(baseNodeClass->mutex());
 		attribute_ = baseNodeClass->attribute((AttributeId)monitoredItemCreateRequest->itemToMonitor().attributeId());
 		if (attribute_ == nullptr) {
 			Log(Debug, "attribute not exist")
@@ -137,6 +145,7 @@ namespace OpcUaStackServer
 			freeSize--;
 
 			monitoredItemNotificationArray->push_back(monitorItemList_.front());
+
 			monitorItemList_.pop_front();
 		} while (true);
 
@@ -147,8 +156,8 @@ namespace OpcUaStackServer
 	MonitorItem::sample(void)
 	{
 		BaseNodeClass::SPtr baseNodeClass = baseNodeClass_.lock();
-		if (baseNodeClass.get() == nullptr) {
 
+		if (baseNodeClass.get() == nullptr) {
 			// base node class no longer exist. Generate final notification if necessary
 			if (dataValue_.statusCode() == BadNodeClassInvalid) return NodeNoLongerExist;
 
@@ -158,6 +167,8 @@ namespace OpcUaStackServer
 			monitorItemListPushBack(monitoredItemNotification);
 			return NodeNoLongerExist;
 		}
+
+		boost::shared_lock<boost::shared_mutex> lock(baseNodeClass->mutex());
 
 		// check wheater an event schould be generated
 		if (!AttributeAccess::trigger(dataValue_, *attribute_)) return Ok; 
@@ -175,7 +186,6 @@ namespace OpcUaStackServer
 
 		// insert notification
 		AttributeAccess::copy(*attribute_, dataValue_);
-		//monitoredItemNotification->dataValue().statusCode(Success);
 		monitorItemListPushBack(monitoredItemNotification);
 		return Ok;
 	}
@@ -190,7 +200,14 @@ namespace OpcUaStackServer
 			.parameter("ActQueueSize", actQueueSize)
 			.parameter("MaxQueueSize", queSize_);
 		
-		if (actQueueSize >= queSize_) return;
+		if (actQueueSize >= queSize_) {
+		    if (discardOldest_) {
+		        monitorItemList_.pop_front();
+		    } else {
+		        monitorItemList_.pop_back();
+		    }
+		}
+
 		monitoredItemNotification->clientHandle(clientHandle_);
 		monitorItemList_.push_back(monitoredItemNotification);
 	}

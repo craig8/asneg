@@ -1,5 +1,5 @@
 /*
-   Copyright 2015 Kai Huebl (kai@huebl-sgh.de)
+   Copyright 2015-2017 Kai Huebl (kai@huebl-sgh.de)
 
    Lizenziert gemäß Apache Licence Version 2.0 (die „Lizenz“); Nutzung dieser
    Datei nur in Übereinstimmung mit der Lizenz erlaubt.
@@ -21,27 +21,31 @@
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <OpcUaStackCore/Network/TCPAcceptor.h>
+#include "OpcUaStackCore/Base/os.h"
 #include "OpcUaStackCore/SecureChannel/SecureChannelServerConfig.h"
 #include "OpcUaStackCore/SecureChannel/SecureChannelServerIf.h"
 #include "OpcUaStackCore/SecureChannel/SecureChannelBase.h"
-#include "OpcUaStackCore/TCPChannel/TCPAcceptor.h"
 
 namespace OpcUaStackCore
 {
 
-	class SecureChannelServer
+	class DLLEXPORT SecureChannelServer
 	: public SecureChannelBase
 	{
 	  public:
+		typedef boost::shared_ptr<SecureChannelServer> SPtr;
+
 		SecureChannelServer(IOThread* ioThread);
 		~SecureChannelServer(void);
 
 		void secureChannelServerIf(SecureChannelServerIf* secureChannelServerIf);
 		SecureChannelServerIf* secureChannelServerIf(void);
 
-		void accept(SecureChannelServerConfig::SPtr secureChannelServerConfig);
+		bool accept(SecureChannelServerConfig::SPtr secureChannelServerConfig);
 		void disconnect(void);
 		void disconnect(SecureChannel* secureChannel);
+		void sendResponse(SecureChannel* secureChannel, SecureChannelTransaction::SPtr& secureChannelTransaction);
 
 		//- SecureChannelBase -------------------------------------------------
 		void handleDisconnect(SecureChannel* secureChannel);
@@ -67,6 +71,8 @@ namespace OpcUaStackCore
 		boost::asio::ip::tcp::resolver resolver_;
 		SecureChannelServerIf* secureChannelServerIf_;
 		TCPAcceptor* tcpAcceptor_;
+
+		Object::SPtr handle_;
 	};
 
 }
