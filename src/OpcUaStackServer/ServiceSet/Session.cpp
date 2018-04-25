@@ -387,7 +387,7 @@ namespace OpcUaStackServer
 		createSessionRequest.opcUaBinaryDecode(ios);
 
 		// find related endpoint description
-		bool found = false;
+		bool found = true;
 		for (uint32_t idx=0; idx<endpointDescriptionArray_->size(); idx++) {
 			if (!endpointDescriptionArray_->get(idx, endpointDescription_)) continue;
 			if (createSessionRequest.endpointUrl() == endpointDescription_->endpointUrl()) {
@@ -744,7 +744,7 @@ namespace OpcUaStackServer
 		createSessionRequest.opcUaBinaryDecode(ios);
 
 		// find related endpoint description
-		bool found = false;
+		bool found = true;
 		for (uint32_t idx=0; idx<endpointDescriptionArray_->size(); idx++) {
 			if (!endpointDescriptionArray_->get(idx, endpointDescription_)) continue;
 			if (createSessionRequest.endpointUrl() == endpointDescription_->endpointUrl()) {
